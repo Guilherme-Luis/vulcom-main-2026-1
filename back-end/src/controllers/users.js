@@ -13,6 +13,7 @@ const controller = {}     // Objeto vazio
 
 controller.create = async function (req, res) {
   try {
+    if (! req?.authUser?.is_admin) return res.status(403).end()
     if (req.body?.password) {
       req.body.password = await argon2.hash(req.body.password, ARGON2_CONFIG)
     }
@@ -31,7 +32,10 @@ controller.create = async function (req, res) {
 
 controller.retrieveAll = async function (req, res) {
   try {
-    const result = await prisma.user.findMany()
+    if (! req?.authUser?.is_admin) return res.status(403).end()
+    const result = await prisma.user.findMany({
+      omit: { password: true }
+    })
 
     // HTTP 200: OK (implícito)
     res.send(result)
@@ -46,7 +50,9 @@ controller.retrieveAll = async function (req, res) {
 
 controller.retrieveOne = async function (req, res) {
   try {
+    if (! req?.authUser?.is_admin || Number(req?.authUser?.id) === Number(req.params.id)) return res.status(403).end()
     const result = await prisma.user.findUnique({
+      omit: { password: true },
       where: { id: Number(req.params.id) }
     })
 
@@ -65,6 +71,7 @@ controller.retrieveOne = async function (req, res) {
 
 controller.update = async function (req, res) {
   try {
+    if (! (req?.authUser?.is_admin || Number(req?.authUser?.id) === Number(req.params.id))) return res.status(403).end()
     if (req.body.password) {
       req.body.password = await argon2.hash(req.body.password, ARGON2_CONFIG)
     }
@@ -88,6 +95,7 @@ controller.update = async function (req, res) {
 
 controller.delete = async function (req, res) {
   try {
+    if (! req?.authUser?.is_admin) return res.status(403).end()
     await prisma.user.delete({
       where: { id: Number(req.params.id) }
     })
